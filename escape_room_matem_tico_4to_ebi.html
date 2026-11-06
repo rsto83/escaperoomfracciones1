@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Escape Room: Misión Fracciones y Decimales</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Nunito', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #311042 100%);
+        }
+        h1, h2, h3, .font-heading {
+            font-family: 'Fredoka', cursive;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #4f46e5;
+            border-radius: 4px;
+        }
+        /* Pulse animation for timer */
+        @keyframes pulse-fast {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.05); opacity: 0.8; }
+        }
+        .pulse-danger {
+            animation: pulse-fast 0.8s infinite;
+        }
+        /* Pie Chart Segment Styles */
+        .pie-slice {
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        .pie-slice:hover {
+            filter: brightness(1.2);
+            transform: scale(1.02);
+            transform-origin: center;
+        }
+        .pie-slice.selected {
+            fill: #ec4899 !important;
+            stroke: #f472b6;
+            stroke-width: 3;
+        }
+    </style>
+</head>
+<body class="text-white min-h-screen flex flex-col justify-between selection:bg-pink-500 selection:text-white">
+
+    <!-- Top Bar: Status (Lives, Timer, Progress) -->
+    <header class="bg-slate-900/80 backdrop-blur-md border-b border-indigo-500/30 sticky top-0 z-50 px-4 py-3">
+        <div class="max-w-5xl mx-auto flex flex-wrap justify-between items-center gap-3">
+            <!-- Game Title & Room info -->
+            <div class="flex items-center space-x-3">
+                <div class="bg-gradient-to-tr from-pink-500 to-indigo-600 p-2.5 rounded-xl shadow-lg">
+                    <i class="fa-solid fa-user-astronaut text-2xl text-white"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg md:text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-pink-400 to-purple-300">
+                        Escape Room Espacial
+                    </h1>
+                    <p class="text-xs text-indigo-300 font-medium" id="room-tracker">Misión 1 de 10</p>
+                </div>
+            </div>
+
+            <!-- Dashboard Controls: Lives & Timer -->
+            <div class="flex items-center space-x-6 bg-slate-800/90 px-4 py-2 rounded-2xl border border-indigo-400/20 shadow-inner">
+                <!-- Vidas -->
+                <div class="flex items-center space-x-1.5" title="Vidas restantes">
+                    <span class="text-xs text-slate-400 font-bold uppercase mr-1 hidden sm:inline">Vidas:</span>
+                    <div id="lives-container" class="flex space-x-1">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <div class="h-6 w-px bg-slate-700"></div>
+
+                <!-- Tiempo -->
+                <div class="flex items-center space-x-2" id="timer-box">
+                    <i class="fa-solid fa-clock text-amber-400 text-lg"></i>
+                    <span id="timer-display" class="font-mono text-xl font-bold text-amber-300">30:00</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-grow max-w-4xl w-full mx-auto p-4 md:p-6 flex flex-col justify-center">
+
+        <!-- START SCREEN -->
+        <div id="start-screen" class="bg-slate-800/90 backdrop-blur-lg border border-indigo-500/30 rounded-3xl p-6 md:p-10 shadow-2xl text-center space-y-6 my-auto">
+            <div class="inline-block p-4 bg-indigo-600/30 rounded-full border-2 border-indigo-400 mb-2">
+                <i class="fa-solid fa-rocket text-5xl md:text-6xl text-pink-400 animate-bounce"></i>
+            </div>
+            <h2 class="text-3xl md:text-4xl font-extrabold text-white">¡Alerta en la Estación Espacial!</h2>
+            <p class="text-indigo-200 text-base md:text-lg max-w-2xl mx-auto leading-relaxed">
+                El sistema de navegación se descalibró. Para reactivar el cohete y regresar a la Tierra, debes resolver <strong class="text-pink-400">10 cerraduras matemáticas</strong> sobre <strong class="text-yellow-300">fracciones y números decimales</strong>.
+            </p>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-left max-w-xl mx-auto bg-slate-900/60 p-4 rounded-2xl border border-slate-700">
+                <div class="flex items-center space-x-3">
+                    <i class="fa-solid fa-heart text-red-500 text-2xl"></i>
+                    <div>
+                        <div class="font-bold text-sm">5 Vidas</div>
+                        <div class="text-xs text-slate-400">Si fallas pierdes 1 vida</div>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <i class="fa-solid fa-stopwatch text-amber-400 text-2xl"></i>
+                    <div>
+                        <div class="font-bold text-sm">30 Minutos</div>
+                        <div class="text-xs text-slate-400">Para escapar a tiempo</div>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <i class="fa-solid fa-key text-emerald-400 text-2xl"></i>
+                    <div>
+                        <div class="font-bold text-sm">10 Misiones</div>
+                        <div class="text-xs text-slate-400">Para desbloquear el escape</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pt-4">
+                <button onclick="startGame()" class="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white font-bold text-xl rounded-2xl shadow-lg shadow-pink-500/30 transform hover:-translate-y-1 transition duration-200">
+                    <i class="fa-solid fa-play mr-2"></i> ¡Comenzar Misión!
+                </button>
+            </div>
+        </div>
+
+        <!-- GAMEPLAY SCREEN -->
+        <div id="game-screen" class="hidden flex-col space-y-6">
+            
+            <!-- Progress Bar -->
+            <div class="w-full bg-slate-800 rounded-full h-3 overflow-hidden border border-slate-700 p-0.5">
+                <div id="progress-bar" class="bg-gradient-to-r from-pink-500 to-emerald-400 h-full rounded-full transition-all duration-500" style="width: 10%"></div>
+            </div>
+
+            <!-- Card Mission Content -->
+            <div class="bg-slate-800/95 backdrop-blur-md border border-indigo-500/30 rounded-3xl p-6 md:p-8 shadow-2xl relative">
+                
+                <!-- Room Badge & Category -->
+                <div class="flex justify-between items-center mb-4">
+                    <span id="mission-badge" class="px-3.5 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                        Cerradura #1
+                    </span>
+                    <span id="mission-topic" class="text-xs md:text-sm text-pink-400 font-semibold">
+                        <!-- Topic string -->
+                    </span>
+                </div>
+
+                <!-- Problem Title / Question -->
+                <h3 id="question-text" class="text-xl md:text-2xl font-bold text-white mb-6 leading-snug">
+                    <!-- Dynamic Question Text -->
+                </h3>
+
+                <!-- Dynamic Interactive Workspace -->
+                <div id="interactive-workspace" class="bg-slate-900/80 rounded-2xl p-4 md:p-6 mb-6 border border-slate-700 flex flex-col items-center justify-center min-h-[220px]">
+                    <!-- Canvas, Recta, Tortas, or Selectors dynamically injected here -->
+                </div>
+
+                <!-- Input / Response Controls -->
+                <div id="answer-controls" class="space-y-4">
+                    <!-- Standard Multiple Choice or Input controls built by JS -->
+                </div>
+
+                <!-- Message Alert Box inside room -->
+                <div id="feedback-box" class="hidden mt-4 p-4 rounded-xl text-center font-bold text-sm transition-all duration-300"></div>
+
+                <!-- Submit Button -->
+                <div class="mt-6 flex justify-end">
+                    <button id="btn-submit" onclick="checkAnswer()" class="w-full sm:w-auto px-7 py-3.5 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-extrabold text-lg rounded-xl shadow-lg shadow-emerald-500/20 transform hover:-translate-y-0.5 transition flex items-center justify-center space-x-2">
+                        <span>Desbloquear Cerradura</span>
+                        <i class="fa-solid fa-lock-open text-base"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- WIN SCREEN -->
+        <div id="win-screen" class="hidden bg-slate-800/95 backdrop-blur-lg border border-emerald-500/40 rounded-3xl p-6 md:p-10 shadow-2xl text-center space-y-6 my-auto">
+            <div class="inline-block p-4 bg-emerald-500/20 rounded-full border-2 border-emerald-400 mb-2">
+                <i class="fa-solid fa-trophy text-6xl text-amber-400 animate-bounce"></i>
+            </div>
+            <h2 class="text-3xl md:text-5xl font-extrabold text-white">¡Misión Cumplida!</h2>
+            <p class="text-emerald-200 text-lg max-w-xl mx-auto">
+                ¡Lograste reparar los códigos de la nave a tiempo y salvar la tripulación! Eres un maestro/a de las fracciones y los decimales.
+            </p>
+
+            <div class="bg-slate-900/80 p-6 rounded-2xl border border-slate-700 max-w-md mx-auto space-y-3">
+                <div class="flex justify-between items-center text-sm">
+                    <span class="text-slate-400">Tiempo Restante:</span>
+                    <span id="final-time" class="font-bold text-amber-300 text-base">--:--</span>
+                </div>
+                <div class="flex justify-between items-center text-sm">
+                    <span class="text-slate-400">Vidas Conservadas:</span>
+                    <span id="final-lives" class="font-bold text-red-400 text-base">5/5</span>
+                </div>
+                <div class="flex justify-between items-center text-sm">
+                    <span class="text-slate-400">Nivel de Dominio:</span>
+                    <span class="font-bold text-emerald-400 text-base">¡Excelente! (EBI 4°)</span>
+                </div>
+            </div>
+
+            <button onclick="resetGame()" class="px-8 py-4 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-slate-950 font-black text-xl rounded-2xl shadow-lg shadow-emerald-500/30 transform hover:-translate-y-1 transition">
+                <i class="fa-solid fa-rotate-right mr-2"></i> Jugar de Nuevo
+            </button>
+        </div>
+
+        <!-- GAME OVER SCREEN -->
+        <div id="gameover-screen" class="hidden bg-slate-800/95 backdrop-blur-lg border border-red-500/40 rounded-3xl p-6 md:p-10 shadow-2xl text-center space-y-6 my-auto">
+            <div class="inline-block p-4 bg-red-500/20 rounded-full border-2 border-red-400 mb-2">
+                <i class="fa-solid fa-triangle-exclamation text-6xl text-red-400"></i>
+            </div>
+            <h2 class="text-3xl md:text-5xl font-extrabold text-white">¡Misión Fallida!</h2>
+            <p id="gameover-reason" class="text-red-200 text-lg max-w-xl mx-auto">
+                Te has quedado sin vidas para abrir los sistemas.
+            </p>
+
+            <div class="p-4 bg-slate-900/80 rounded-2xl border border-slate-700 max-w-md mx-auto text-sm text-slate-300">
+                ¡No te rindas! Repasa las representaciones de fracciones, la recta numérica y las conversiones decimales antes de volver a intentarlo.
+            </div>
+
+            <button onclick="resetGame()" class="px-8 py-4 bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700 text-white font-bold text-xl rounded-2xl shadow-lg shadow-red-500/30 transform hover:-translate-y-1 transition">
+                <i class="fa-solid fa-arrows-rotate mr-2"></i> Reintentar Misión
+            </button>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="py-4 text-center text-xs text-slate-400 border-t border-slate-800">
+        Diseñado para Educación Primaria (4° Año EBI) &bull; Matemática Interactiva
+    </footer>
+
+    <!-- Audio Effects using Web Audio API -->
+    <script>
+        // Web Audio Synth for Effects
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new AudioContext();
+            }
+        }
+
+        function playSound(type) {
+            if (!audioCtx) return;
+            try {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                const now = audioCtx.currentTime;
+
+                if (type === 'correct') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(523.25, now); // C5
+                    osc.frequency.exponentialRampToValueAtTime(880, now + 0.2); // A5
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+                    osc.start(now);
+                    osc.stop(now + 0.35);
+                } else if (type === 'wrong') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(220, now); // A3
+                    osc.frequency.setValueAtTime(140, now + 0.15); 
+                    gain.gain.setValueAtTime(0.3, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+                    osc.start(now);
+                    osc.stop(now + 0.35);
+                } else if (type === 'click') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(400, now);
+                    gain.gain.setValueAtTime(0.05, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+                    osc.start(now);
+                    osc.stop(now + 0.05);
+                } else if (type === 'win') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(440, now);
+                    osc.frequency.setValueAtTime(554.37, now + 0.1);
+                    osc.frequency.setValueAtTime(659.25, now + 0.2);
+                    osc.frequency.setValueAtTime(880, now + 0.3);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
+                    osc.start(now);
+                    osc.stop(now + 0.6);
+                }
+            } catch (e) {
+                console.log("Audio not allowed yet");
+            }
+        }
+    </script>
+
+    <!-- Main Game Logic -->
+    <script>
+        // GAME STATE
+        let currentRoom = 0;
+        let lives = 5;
+        let timerSeconds = 30 * 60; // 30 minutes
+        let timerInterval = null;
+        let userInteractiveState = {}; // Storage for state like pie slices or line slider
+
+        // ROOM DATA CONFIGURATION (10 Levels tailored for 4th Grade Primary EBI)
+        const rooms = [
+            // Page 1: Lectura de Torta -> Fracción
+            {
+                topic: "Lectura de Gráficos (Tortas)",
+                question: "Observa la siguiente torta espacial dividida en partes iguales. ¿Qué fracción representa la porción coloreada de violeta?",
+                type: "pie-read",
+                slicesTotal: 6,
+                slicesFilled: 4,
+                options: ["2/6", "4/6", "4/2", "6/4"],
+                correct: "4/6",
+                hint: "Cuenta primero cuántas partes están pintadas de violeta (numerador) y cuántas partes hay en total (denominador)."
+            },
+            // Page 2: Marcar / Pintar Fracciones en la Torta
+            {
+                topic: "Representar Fracciones en Gráficos",
+                question: "Pinta la torta circular haciendo clic sobre sus porciones para representar exactamente la fracción: <span class='text-pink-400 font-bold text-2xl ml-2'>3/8</span>",
+                type: "pie-make",
+                slicesTotal: 8,
+                targetNumerator: 3,
+                hint: "Haz clic en 3 sectores para pintarlos de color rosa."
+            },
+            // Page 3: Suma de Fracciones (Mismo Denominador)
+            {
+                topic: "Suma de Fracciones",
+                question: "Para activar los propulsores del módulo A, calcula el resultado de la siguiente suma de fracciones con igual denominador:",
+                type: "fraction-sum",
+                expression: "\\frac{2}{7} + \\frac{3}{7}",
+                num1: 2, num2: 3, den: 7,
+                options: ["5/14", "5/7", "6/7", "1/7"],
+                correct: "5/7",
+                hint: "En las sumas con igual denominador, los numeradores se suman y el denominador se mantiene exactamente igual."
+            },
+            // Page 4: Fracciones Equivalentes
+            {
+                topic: "Fracciones Equivalentes",
+                question: "Encuentra la fracción equivalente a <span class='text-amber-300 font-bold text-2xl'>1/2</span> para nivelar los tanques de oxígeno:",
+                type: "mcq",
+                options: ["2/5", "3/6", "2/3", "4/10"],
+                correct: "3/6",
+                hint: "Una fracción equivalente vale exactamente lo mismo. Si multiplicas 1 y 2 por 3, obtienes 3/6."
+            },
+            // Page 5: Fracción a Decimal (Décimos)
+            {
+                topic: "Paso de Fracción a Decimal",
+                question: "Convierte la fracción decimal <span class='text-pink-400 font-bold text-2xl'>7/10</span> a número decimal:",
+                type: "input-number",
+                correct: "0.7",
+                placeholder: "Ej: 0.5",
+                hint: "Dividir entre 10 equivale a colocar un lugar después de la coma (0.7)."
+            },
+            // Page 6: Fracción a Decimal (Centésimos)
+            {
+                topic: "Paso de Fracción a Decimal",
+                question: "El radar detectó una señal correspondiente a la fracción <span class='text-yellow-300 font-bold text-2xl'>45/100</span>. ¿Cómo se escribe en formato decimal?",
+                type: "mcq",
+                options: ["4.5", "0.45", "0.045", "45.0"],
+                correct: "0.45",
+                hint: "Como el denominador es 100, la respuesta debe tener 2 cifras decimales después de la coma."
+            },
+            // Page 7: Decimal a Fracción
+            {
+                topic: "Paso de Decimal a Fracción",
+                question: "Convierte el número decimal <span class='text-emerald-400 font-bold text-2xl'>0.3</span> a una fracción:",
+                type: "mcq",
+                options: ["3/10", "3/100", "1/3", "30/10"],
+                correct: "3/10",
+                hint: "El número 0.3 se lee como 'tres décimos', lo que corresponde a la fracción 3/10."
+            },
+            // Page 8: Ubicar en la Recta Numérica (Fracción Propia)
+            {
+                topic: "Ubicación en la Recta Numérica",
+                question: "Mueve el indicador en la recta numérica entre 0 y 1 para ubicar la fracción <span class='text-pink-400 font-bold text-2xl'>3/4</span>:",
+                type: "number-line",
+                min: 0,
+                max: 1,
+                divisions: 4,
+                targetNumerator: 3,
+                hint: "El tramo entre 0 y 1 se divide en 4 partes iguales. Ubica el marcador en la 3.ª marca."
+            },
+            // Page 9: Ubicar en la Recta Numérica (Fracción Mayor que 1 / Impropia)
+            {
+                topic: "Recta Numérica (Mayores a 1)",
+                question: "Las naves de escolta se posicionaron más allá de la unidad. Ubica en la recta la fracción <span class='text-yellow-300 font-bold text-2xl'>5/2</span> (que equivale a 2 y 1/2):",
+                type: "number-line-improper",
+                min: 0,
+                max: 4,
+                divisions: 8, // Half increments: 0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4
+                targetVal: 2.5,
+                hint: "5/2 equivale a 2.5 (la mitad entre el número 2 y el número 3)."
+            },
+            // Page 10: Reto Final - Lectura de Torta Mayor/Combinada
+            {
+                topic: "Desbloqueo Final del Sistema",
+                question: "¿Cuál de las siguientes sumas de fracciones equivale a la unidad completa <span class='text-emerald-400 font-bold text-2xl'>1</span>?",
+                type: "mcq",
+                options: ["1/4 + 2/4", "3/8 + 5/8", "2/5 + 2/5", "4/10 + 5/10"],
+                correct: "3/8 + 5/8",
+                hint: "3/8 + 5/8 = 8/8. Recuerda que cuando el numerador y el denominador son iguales (8/8), la fracción equivale a 1 entero."
+            }
+        ];
+
+        // START GAME FUNCTION
+        function startGame() {
+            initAudio();
+            playSound('click');
+            
+            currentRoom = 0;
+            lives = 5;
+            timerSeconds = 30 * 60;
+
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('win-screen').classList.add('hidden');
+            document.getElementById('gameover-screen').classList.add('hidden');
+            document.getElementById('game-screen').classList.remove('hidden');
+            document.getElementById('game-screen').classList.add('flex');
+
+            renderLives();
+            startTimer();
+            loadRoom(currentRoom);
+        }
+
+        // RESET GAME
+        function resetGame() {
+            clearInterval(timerInterval);
+            startGame();
+        }
+
+        // TIMER FUNCTIONS
+        function startTimer() {
+            clearInterval(timerInterval);
+            updateTimerDisplay();
+            
+            timerInterval = setInterval(() => {
+                timerSeconds--;
+                updateTimerDisplay();
+
+                if (timerSeconds <= 0) {
+                    clearInterval(timerInterval);
+                    triggerGameOver("¡Se agotó el tiempo de 30 minutos! La estación espacial se desorientó.");
+                }
+            }, 1000);
+        }
+
+        function updateTimerDisplay() {
+            const mins = Math.floor(timerSeconds / 60);
+            const secs = timerSeconds % 60;
+            const display = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            const el = document.getElementById('timer-display');
+            const box = document.getElementById('timer-box');
+            el.innerText = display;
+
+            if (timerSeconds <= 300) { // last 5 mins
+                box.classList.add('pulse-danger', 'text-red-400');
+            } else {
+                box.classList.remove('pulse-danger', 'text-red-400');
+            }
+        }
+
+        // LIVES DISPLAY
+        function renderLives() {
+            const container = document.getElementById('lives-container');
+            container.innerHTML = '';
+            for (let i = 0; i < 5; i++) {
+                const heart = document.createElement('i');
+                if (i < lives) {
+                    heart.className = 'fa-solid fa-heart text-red-500 text-lg transition-transform duration-300 scale-100';
+                } else {
+                    heart.className = 'fa-regular fa-heart text-slate-600 text-lg scale-90';
+                }
+                container.appendChild(heart);
+            }
+        }
+
+        function loseLife() {
+            lives--;
+            renderLives();
+            playSound('wrong');
+            if (lives <= 0) {
+                triggerGameOver("Te has quedado sin vidas. ¡El sistema de la nave se bloqueó por seguridad!");
+            }
+        }
+
+        // LOAD ROOM / MISSION
+        function loadRoom(index) {
+            userInteractiveState = {}; // clear state
+            const room = rooms[index];
+
+            // Update Header & Progress
+            document.getElementById('room-tracker').innerText = `Misión ${index + 1} de ${rooms.length}`;
+            document.getElementById('mission-badge').innerText = `Cerradura #${index + 1}`;
+            document.getElementById('mission-topic').innerText = room.topic;
+            document.getElementById('question-text').innerHTML = room.question;
+
+            const percent = ((index + 1) / rooms.length) * 100;
+            document.getElementById('progress-bar').style.width = `${percent}%`;
+
+            // Reset feedback
+            const feedback = document.getElementById('feedback-box');
+            feedback.className = "hidden mt-4 p-4 rounded-xl text-center font-bold text-sm transition-all duration-300";
+            feedback.innerText = "";
+
+            // Build Workspace & Controls according to room type
+            const workspace = document.getElementById('interactive-workspace');
+            const controls = document.getElementById('answer-controls');
+            workspace.innerHTML = '';
+            controls.innerHTML = '';
+
+            switch (room.type) {
+                case 'pie-read':
+                    renderPieChartRead(workspace, room.slicesTotal, room.slicesFilled);
+                    renderMCQControls(controls, room.options);
+                    break;
+
+                case 'pie-make':
+                    renderPieChartInteractive(workspace, room.slicesTotal);
+                    controls.innerHTML = `<p class="text-xs text-center text-slate-400 font-medium"><i class="fa-solid fa-hand-pointer mr-1"></i> Selecciona exactamente ${room.targetNumerator} sectores en el gráfico de arriba.</p>`;
+                    break;
+
+                case 'fraction-sum':
+                    renderFractionSumVisual(workspace, room.num1, room.num2, room.den);
+                    renderMCQControls(controls, room.options);
+                    break;
+
+                case 'mcq':
+                    workspace.innerHTML = `<i class="fa-solid fa-gears text-6xl text-indigo-400/40 animate-spin-slow"></i>`;
+                    renderMCQControls(controls, room.options);
+                    break;
+
+                case 'input-number':
+                    workspace.innerHTML = `
+                        <div class="text-center space-y-3">
+                            <i class="fa-solid fa-calculator text-5xl text-pink-400"></i>
+                            <p class="text-sm text-slate-300">Ingresa la respuesta en el cuadro de abajo:</p>
+                        </div>
+                    `;
+                    renderInputControls(controls, room.placeholder);
+                    break;
+
+                case 'number-line':
+                case 'number-line-improper':
+                    renderNumberLine(workspace, room);
+                    controls.innerHTML = `<p class="text-xs text-center text-slate-400 font-medium"><i class="fa-solid fa-sliders mr-1"></i> Desliza la marca hasta la posición correcta.</p>`;
+                    break;
+            }
+        }
+
+        // RENDER HELPERS: PIE READ
+        function renderPieChartRead(container, total, filled) {
+            const size = 180;
+            const radius = 80;
+            const center = size / 2;
+            let paths = '';
+
+            for (let i = 0; i < total; i++) {
+                const startAngle = (i * 360 / total) * (Math.PI / 180);
+                const endAngle = ((i + 1) * 360 / total) * (Math.PI / 180);
+
+                const x1 = center + radius * Math.cos(startAngle);
+                const y1 = center + radius * Math.sin(startAngle);
+                const x2 = center + radius * Math.cos(endAngle);
+                const y2 = center + radius * Math.sin(endAngle);
+
+                const largeArc = (endAngle - startAngle) > Math.PI ? 1 : 0;
+                const pathData = `M ${center} ${center} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z`;
+
+                const isFilled = i < filled;
+                const fillColor = isFilled ? '#a855f7' : '#334155'; // Purple vs slate-700
+                const strokeColor = '#1e293b';
+
+                paths += `<path d="${pathData}" fill="${fillColor}" stroke="${strokeColor}" stroke-width="2"/>`;
+            }
+
+            container.innerHTML = `
+                <div class="flex flex-col items-center">
+                    <svg width="${size}" height="${size}" class="drop-shadow-lg">
+                        ${paths}
+                    </svg>
+                    <div class="mt-3 text-xs text-slate-400 font-semibold">Torta dividida en ${total} partes</div>
+                </div>
+            `;
+        }
+
+        // RENDER HELPERS: PIE INTERACTIVE (MAKE)
+        function renderPieChartInteractive(container, total) {
+            userInteractiveState.selectedSlices = new Array(total).fill(false);
+            const size = 200;
+            const radius = 85;
+            const center = size / 2;
+
+            const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+            svg.setAttribute("width", size);
+            svg.setAttribute("height", size);
+            svg.setAttribute("class", "drop-shadow-xl");
+
+            for (let i = 0; i < total; i++) {
+                const startAngle = (i * 360 / total) * (Math.PI / 180);
+                const endAngle = ((i + 1) * 360 / total) * (Math.PI / 180);
+
+                const x1 = center + radius * Math.cos(startAngle);
+                const y1 = center + radius * Math.sin(startAngle);
+                const x2 = center + radius * Math.cos(endAngle);
+                const y2 = center + radius * Math.sin(endAngle);
+
+                const largeArc = (endAngle - startAngle) > Math.PI ? 1 : 0;
+                const pathData = `M ${center} ${center} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z`;
+
+                const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                path.setAttribute("d", pathData);
+                path.setAttribute("class", "pie-slice");
+                path.setAttribute("fill", "#334155");
+                path.setAttribute("stroke", "#0f172a");
+                path.setAttribute("stroke-width", "2");
+
+                path.addEventListener('click', () => {
+                    playSound('click');
+                    userInteractiveState.selectedSlices[i] = !userInteractiveState.selectedSlices[i];
+                    if (userInteractiveState.selectedSlices[i]) {
+                        path.classList.add('selected');
+                    } else {
+                        path.classList.remove('selected');
+                    }
+                });
+
+                svg.appendChild(path);
+            }
+
+            container.appendChild(svg);
+            
+            const info = document.createElement('div');
+            info.className = "mt-3 text-xs text-indigo-300 font-bold";
+            info.innerHTML = "Haz clic sobre los segmentos para pintar / despintar";
+            container.appendChild(info);
+        }
+
+        // RENDER VISUAL FOR FRACTION SUM
+        function renderFractionSumVisual(container, n1, n2, den) {
+            container.innerHTML = `
+                <div class="flex items-center justify-center space-x-4 md:space-x-8">
+                    <!-- Fraction 1 -->
+                    <div class="flex flex-col items-center bg-slate-800 p-3 rounded-xl border border-slate-700">
+                        <span class="text-3xl font-extrabold text-pink-400">${n1}</span>
+                        <div class="w-10 h-1 bg-white rounded my-1"></div>
+                        <span class="text-3xl font-extrabold text-pink-400">${den}</span>
+                    </div>
+
+                    <span class="text-4xl font-bold text-amber-400">+</span>
+
+                    <!-- Fraction 2 -->
+                    <div class="flex flex-col items-center bg-slate-800 p-3 rounded-xl border border-slate-700">
+                        <span class="text-3xl font-extrabold text-pink-400">${n2}</span>
+                        <div class="w-10 h-1 bg-white rounded my-1"></div>
+                        <span class="text-3xl font-extrabold text-pink-400">${den}</span>
+                    </div>
+
+                    <span class="text-4xl font-bold text-emerald-400">=</span>
+
+                    <!-- Result Placeholder -->
+                    <div class="flex flex-col items-center bg-slate-800/50 p-4 rounded-xl border-2 border-dashed border-indigo-400/50">
+                        <span class="text-3xl font-bold text-indigo-300">?</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        // RENDER MCQ CONTROLS
+        function renderMCQControls(container, options) {
+            userInteractiveState.selectedMCQ = null;
+            const grid = document.createElement('div');
+            grid.className = "grid grid-cols-2 gap-3";
+
+            options.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.className = "mcq-btn p-4 bg-slate-900/90 hover:bg-slate-700 border border-slate-700 rounded-xl text-center font-bold text-lg md:text-xl transition duration-150 transform active:scale-95";
+                btn.innerText = opt;
+                btn.onclick = () => {
+                    playSound('click');
+                    document.querySelectorAll('.mcq-btn').forEach(b => {
+                        b.classList.remove('border-pink-500', 'bg-pink-500/20', 'text-pink-300');
+                    });
+                    btn.classList.add('border-pink-500', 'bg-pink-500/20', 'text-pink-300');
+                    userInteractiveState.selectedMCQ = opt;
+                };
+                grid.appendChild(btn);
+            });
+
+            container.appendChild(grid);
+        }
+
+        // RENDER INPUT CONTROLS
+        function renderInputControls(container, placeholder) {
+            container.innerHTML = `
+                <div class="max-w-xs mx-auto">
+                    <input type="text" id="user-text-input" placeholder="${placeholder}" 
+                        class="w-full text-center text-2xl font-bold bg-slate-900 border-2 border-indigo-500/50 rounded-xl py-3 text-white focus:outline-none focus:border-pink-500 transition">
+                </div>
+            `;
+        }
+
+        // RENDER NUMBER LINE
+        function renderNumberLine(container, room) {
+            const min = room.min;
+            const max = room.max;
+            userInteractiveState.sliderVal = min;
+
+            container.innerHTML = `
+                <div class="w-full max-w-lg px-4 py-6 space-y-6">
+                    <!-- Value Indicator Bubble -->
+                    <div class="text-center">
+                        <span class="text-sm text-slate-400 block font-medium mb-1">Posición del marcador:</span>
+                        <span id="line-val-display" class="inline-block bg-pink-500 text-white font-black text-2xl px-5 py-1.5 rounded-full shadow-lg">
+                            ${min}
+                        </span>
+                    </div>
+
+                    <!-- Range Slider Container -->
+                    <div class="relative pt-2">
+                        <input type="range" id="number-range" min="${min}" max="${max}" step="${(max - min) / room.divisions}" value="${min}"
+                            class="w-full accent-pink-500 h-3 bg-slate-700 rounded-lg appearance-none cursor-pointer">
+                        
+                        <!-- Ticks & Labels -->
+                        <div class="flex justify-between text-xs font-bold text-slate-400 mt-3">
+                            <span>${min}</span>
+                            <span>${(max - min) / 2 + min}</span>
+                            <span>${max}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            setTimeout(() => {
+                const slider = document.getElementById('number-range');
+                const display = document.getElementById('line-val-display');
+
+                slider.addEventListener('input', (e) => {
+                    const val = parseFloat(e.target.value);
+                    userInteractiveState.sliderVal = val;
+                    // Format display nicely
+                    display.innerText = val.toString();
+                    playSound('click');
+                });
+            }, 50);
+        }
+
+        // CHECK ANSWER LOGIC
+        function checkAnswer() {
+            const room = rooms[currentRoom];
+            let isCorrect = false;
+
+            switch (room.type) {
+                case 'pie-read':
+                case 'fraction-sum':
+                case 'mcq':
+                    if (userInteractiveState.selectedMCQ === room.correct) {
+                        isCorrect = true;
+                    }
+                    break;
+
+                case 'pie-make':
+                    const count = (userInteractiveState.selectedSlices || []).filter(Boolean).length;
+                    if (count === room.targetNumerator) {
+                        isCorrect = true;
+                    }
+                    break;
+
+                case 'input-number':
+                    const inputVal = document.getElementById('user-text-input')?.value.trim().replace(',', '.');
+                    if (inputVal === room.correct) {
+                        isCorrect = true;
+                    }
+                    break;
+
+                case 'number-line':
+                    const expectedVal = (room.targetNumerator / room.divisions) * (room.max - room.min) + room.min;
+                    if (Math.abs(userInteractiveState.sliderVal - expectedVal) < 0.05) {
+                        isCorrect = true;
+                    }
+                    break;
+
+                case 'number-line-improper':
+                    if (Math.abs(userInteractiveState.sliderVal - room.targetVal) < 0.05) {
+                        isCorrect = true;
+                    }
+                    break;
+            }
+
+            const feedback = document.getElementById('feedback-box');
+            feedback.classList.remove('hidden');
+
+            if (isCorrect) {
+                playSound('correct');
+                feedback.className = "mt-4 p-4 rounded-xl text-center font-bold text-sm bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 animate-bounce";
+                feedback.innerHTML = `<i class="fa-solid fa-circle-check text-lg mr-2"></i> ¡Excelente! ¡Cerradura desbloqueada!`;
+
+                setTimeout(() => {
+                    currentRoom++;
+                    if (currentRoom >= rooms.length) {
+                        triggerWin();
+                    } else {
+                        loadRoom(currentRoom);
+                    }
+                }, 1300);
+
+            } else {
+                loseLife();
+                feedback.className = "mt-4 p-4 rounded-xl text-center font-bold text-sm bg-red-500/20 text-red-300 border border-red-500/40";
+                feedback.innerHTML = `<i class="fa-solid fa-circle-xmark text-lg mr-2"></i> ¡Incorrecto! Pista: ${room.hint}`;
+            }
+        }
+
+        // WIN GAME
+        function triggerWin() {
+            clearInterval(timerInterval);
+            playSound('win');
+
+            document.getElementById('game-screen').classList.add('hidden');
+            document.getElementById('win-screen').classList.remove('hidden');
+            
+            const mins = Math.floor((30 * 60 - timerSeconds) / 60);
+            const secs = (30 * 60 - timerSeconds) % 60;
+            document.getElementById('final-time').innerText = `${mins}m ${secs}s`;
+            document.getElementById('final-lives').innerText = `${lives}/5`;
+        }
+
+        // GAME OVER
+        function triggerGameOver(reason) {
+            clearInterval(timerInterval);
+            playSound('wrong');
+
+            document.getElementById('gameover-reason').innerText = reason;
+            document.getElementById('game-screen').classList.add('hidden');
+            document.getElementById('gameover-screen').classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
